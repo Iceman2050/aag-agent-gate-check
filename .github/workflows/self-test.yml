@@ -1,0 +1,38 @@
+name: Self-test (live scratch check)
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "action.yml"
+      - "src/**"
+      - "slack-app/**"
+      - "n8n-template/**"
+      - ".github/workflows/self-test.yml"
+
+jobs:
+  checker-fixtures:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Pass case - gated fixture must exit 0
+        run: python3 src/checker.py --root tests/fixtures/pass-gated --no-dns
+
+      - name: Fail case - ungated fixture must exit 1
+        run: |
+          if python3 src/checker.py --root tests/fixtures/fail-ungated --no-dns; then
+            echo "ERROR: ungated fixture passed - checker is broken"
+            exit 1
+          fi
+          echo "Ungated fixture correctly failed."
+
+      - name: Action itself - run the composite action on the gated fixture
+        uses: ./
+        with:
+          path: tests/fixtures/pass-gated
+
+      - name: Unit tests (checker + Slack app)
+        run: |
+          python3 -m unittest discover -s tests -v
+          python3 -m unittest discover -s slack-app/tests -v
