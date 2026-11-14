@@ -15,6 +15,16 @@ Fails your CI when:
    a lookup that errors or returns unparseable data is **UNVERIFIED, and
    UNVERIFIED fails** — it is never assumed good.
 
+## Also in this repo
+
+- **`slack-app/`** — a Slack approval app for agent actions: signed,
+  fail-closed approval requests with an audit line per decision.
+- **`n8n-template/`** — "Approve before agent sends email": an importable
+  n8n workflow that holds an agent's outbound email until a human approves.
+
+Both are the same approval-gate pattern as the Action above, for teams
+whose agents act through Slack or n8n instead of CI.
+
 ## Quick start
 
 ```yaml

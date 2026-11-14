@@ -1,0 +1,247 @@
+{
+  "name": "AAG \u2014 Approve before agent sends email",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "aag-agent-action",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000001",
+      "name": "Agent Action Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Shape the agent's attempted action into an approval request.\nconst b = $json.body || $json;\nreturn [{ json: {\n  request_id: b.request_id || ('req-' + Date.now()),\n  agent: b.agent || 'unknown-agent',\n  action: b.action || 'send_email',\n  to: b.to || '', subject: b.subject || '',\n  detail: b.detail || b.body_preview || '',\n  requested_at: new Date().toISOString()\n} }];"
+      },
+      "id": "a1000000-0000-4000-8000-000000000002",
+      "name": "Build Approval Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "channel": "={{ $json.channel || '#agent-approvals' }}",
+        "text": "=Agent *{{ $json.agent }}* wants to run *{{ $json.action }}*\nTo: {{ $json.to }}\nSubject: {{ $json.subject }}\nDetail: {{ $json.detail }}\nRequest: {{ $json.request_id }}\n\nApprove by resuming this execution with decision=approved, or wire the AAG Slack app buttons to the resume URL.",
+        "otherOptions": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000003",
+      "name": "Slack Approval (Wait)",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resume": "formSubmission",
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000004",
+      "name": "Wait for Human Decision",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        900,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.decision || $json.data?.decision }}",
+              "rightValue": "approved",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000005",
+      "name": "Approved?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "agent@example.com",
+        "toEmail": "={{ $('Build Approval Request').item.json.to }}",
+        "subject": "={{ $('Build Approval Request').item.json.subject }}",
+        "emailFormat": "text",
+        "text": "={{ $('Build Approval Request').item.json.detail }}",
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000006",
+      "name": "Send Email (only if approved)",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1340,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// One audit line per decision \u2014 the AAG evidence record.\n// In production, POST this line to your log store / Agent Auth Gateway.\nconst r = $('Build Approval Request').item.json;\nconst line = { ts: new Date().toISOString(), source: 'aag-n8n-template', event: 'decision',\n  decision: $json.decision || 'denied-or-timeout', request_id: r.request_id, agent: r.agent, action: r.action };\nconsole.log(JSON.stringify(line));\nreturn [{ json: line }];"
+      },
+      "id": "a1000000-0000-4000-8000-000000000007",
+      "name": "Audit Log \u2014 Decision",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        1340,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ request_id: $('Build Approval Request').item.json.request_id, decision: $json.decision || 'recorded' }) }}",
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000008",
+      "name": "Respond to Agent",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1560,
+        320
+      ]
+    }
+  ],
+  "connections": {
+    "Agent Action Webhook": {
+      "main": [
+        [
+          {
+            "node": "Build Approval Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Approval Request": {
+      "main": [
+        [
+          {
+            "node": "Slack Approval (Wait)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack Approval (Wait)": {
+      "main": [
+        [
+          {
+            "node": "Wait for Human Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for Human Decision": {
+      "main": [
+        [
+          {
+            "node": "Approved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approved?": {
+      "main": [
+        [
+          {
+            "node": "Send Email (only if approved)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Audit Log \u2014 Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email (only if approved)": {
+      "main": [
+        [
+          {
+            "node": "Audit Log \u2014 Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Audit Log \u2014 Decision": {
+      "main": [
+        [
+          {
+            "node": "Respond to Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "notes": "AAG wedge template by Ingenious AI (MIT). Gate: no email leaves until a human decision resumes the Wait node. Pair with the AAG Slack approval app for Approve/Deny buttons."
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "aag"
+    },
+    {
+      "name": "agent-approvals"
+    },
+    {
+      "name": "ingenious-ai"
+    }
+  ]
+}
