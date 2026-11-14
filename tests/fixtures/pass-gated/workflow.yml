@@ -1,0 +1,9 @@
+name: gated-agent
+on: workflow_dispatch
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Agent sends summary email (human-approval gate via environment)
+        run: python agent_send_email.py --require-approval

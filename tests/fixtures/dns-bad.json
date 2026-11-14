@@ -1,0 +1,1 @@
+{"dmarc_txt":["v=DMARC1; p=none"],"root_txt":["some-other-txt-record"]}

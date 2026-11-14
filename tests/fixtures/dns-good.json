@@ -1,0 +1,1 @@
+{"dmarc_txt":["v=DMARC1; p=reject; rua=mailto:dmarc@example.com"],"root_txt":["v=spf1 include:_spf.google.com -all"]}

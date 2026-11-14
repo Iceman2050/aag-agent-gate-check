@@ -1,0 +1,38 @@
+name: "AAG Agent-Action Gate Check"
+description: "Fail CI when an AI-agent action lacks a human-approval gate, or the sending domain's DMARC/SPF posture is broken. Built by Ingenious AI."
+author: "Ingenious AI"
+branding:
+  icon: "shield"
+  color: "purple"
+inputs:
+  domain:
+    description: "Sending domain to check for DMARC/SPF posture (leave empty to skip DNS checks)"
+    required: false
+    default: ""
+  path:
+    description: "Path to scan for ungated agent actions"
+    required: false
+    default: "."
+  warn-only:
+    description: "Report findings without failing the build (true/false)"
+    required: false
+    default: "false"
+outputs:
+  fail-count:
+    description: "Number of FAIL findings"
+    value: ${{ steps.check.outputs.fail-count }}
+runs:
+  using: "composite"
+  steps:
+    - name: Run AAG checker
+      id: check
+      shell: bash
+      run: |
+        ARGS=(--root "${{ inputs.path }}")
+        if [ -n "${{ inputs.domain }}" ]; then ARGS+=(--domain "${{ inputs.domain }}"); fi
+        if [ "${{ inputs.warn-only }}" = "true" ]; then ARGS+=(--warn-only); fi
+        # tee-free deliberate run: capture exit code without pipefail surprises
+        set +e
+        python3 "${{ github.action_path }}/src/checker.py" "${ARGS[@]}"
+        echo "exit=$?" >> "$GITHUB_OUTPUT"
+        set -e
