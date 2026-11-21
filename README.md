@@ -1,7 +1,7 @@
 # AAG Agent-Action Gate Check — GitHub Action
 
 Built by Ingenious AI · MIT licensed · Free wedge for
-[Agent Auth Gateway](https://agentauth.getingeniousai.com)
+[Agent Auth Gateway](https://authgateway.getingeniousai.com)
 
 Fails your CI when:
 
@@ -114,7 +114,7 @@ JSON fixtures (`--dns-json`); live runs use `dig`.
 
 ## Going further
 This checker is the free wedge. The hosted
-[Agent Auth Gateway](https://agentauth.getingeniousai.com) adds runtime
+[Agent Auth Gateway](https://authgateway.getingeniousai.com) adds runtime
 approval routing (Slack included), policies, roles, and a retained audit
 trail across all your agents — the $497 AAG assessment is the starting
 offer.
